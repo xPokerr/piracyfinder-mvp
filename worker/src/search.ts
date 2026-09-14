@@ -6,17 +6,21 @@ import type {
   SseEventName,
 } from "../../shared/types.ts";
 import { adapters, type SourceAdapter } from "./sources/registry.ts";
+import { HOST_ALLOWLIST } from "./sources/sites.ts";
 
-export const PER_SOURCE_TIMEOUT_MS = 6000;
-export const TOTAL_BUDGET_MS = 8000;
-export const MAX_PER_SOURCE = 20;
-export const MAX_TOTAL = 60;
+export {
+  PER_SOURCE_TIMEOUT_MS,
+  TOTAL_BUDGET_MS,
+  MAX_PER_SOURCE,
+  MAX_TOTAL,
+} from "./limits.ts";
 
-const HOST_ALLOWLIST: Record<SourceId, string[] | null> = {
-  github: ["github.com"],
-  npm: ["www.npmjs.com", "npmjs.com"],
-  crates: null, // crate homepages may point anywhere; require https
-};
+import {
+  PER_SOURCE_TIMEOUT_MS,
+  TOTAL_BUDGET_MS,
+  MAX_PER_SOURCE,
+  MAX_TOTAL,
+} from "./limits.ts";
 
 export function normalizeUrl(raw: string): string | null {
   try {
@@ -33,7 +37,7 @@ export function normalizeUrl(raw: string): string | null {
 
 export function isAllowedUrl(url: string, source: SourceId): boolean {
   const allow = HOST_ALLOWLIST[source];
-  if (!allow) return normalizeUrl(url) !== null;
+  if (!allow) return false;
   try {
     const host = new URL(url).hostname.toLowerCase();
     return allow.includes(host);

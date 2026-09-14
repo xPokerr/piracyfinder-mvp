@@ -1,6 +1,19 @@
 // Shared contract between worker and web. Keep in sync on both sides.
 
-export type SourceId = "github" | "npm" | "crates";
+// One id per megathread "Direct downloads" site wired into the registry.
+export type SourceId =
+  | "cracksurl"
+  | "aedownload"
+  | "appdoze"
+  | "downloadpirate"
+  | "gift4designer"
+  | "hunterae"
+  | "introhd"
+  | "matesfx"
+  | "motka"
+  | "plc4me"
+  | "softlay"
+  | "vfxmed";
 
 export interface SearchResult {
   id: string;

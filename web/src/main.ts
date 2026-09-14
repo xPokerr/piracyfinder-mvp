@@ -29,13 +29,14 @@ let current: AbortController | null = null;
 let querySeq = 0;
 const seen = new Map<string, Result>();
 const activeFilters = new Set<string>();
+const labelById = new Map<string, string>();
 
 function renderProgress(statuses: Map<string, Status>) {
   progress.innerHTML = "";
   for (const [id, s] of statuses) {
     const div = document.createElement("div");
     div.className = "prog";
-    div.textContent = `${id}: ${s.state}${s.count ? ` (${s.count})` : ""}${s.error ? ` — ${s.error}` : ""}`;
+    div.textContent = `${labelById.get(id) ?? id}: ${s.state}${s.count ? ` (${s.count})` : ""}${s.error ? ` — ${s.error}` : ""}`;
     progress.appendChild(div);
   }
 }
@@ -55,7 +56,7 @@ function renderResults() {
     a.textContent = r.title;
     const badge = document.createElement("span");
     badge.className = "badge";
-    badge.textContent = r.source;
+    badge.textContent = labelById.get(r.source) ?? r.source;
     h.append(a, badge);
     const p = document.createElement("p");
     p.textContent = r.snippet;
@@ -69,6 +70,7 @@ async function loadFilters() {
     const sources = await fetchSources();
     filters.innerHTML = "<legend>Filter by source</legend>";
     for (const s of sources) {
+      labelById.set(s.id, s.label);
       const label = document.createElement("label");
       const box = document.createElement("input");
       box.type = "checkbox";

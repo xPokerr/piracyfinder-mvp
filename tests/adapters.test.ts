@@ -1,82 +1,170 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cratesAdapter } from "../worker/src/sources/crates.ts";
-import { githubAdapter } from "../worker/src/sources/github.ts";
-import { npmAdapter } from "../worker/src/sources/npm.ts";
+import {
+  decodeEntities,
+  extractLinks,
+  stripTags,
+} from "../worker/src/sources/html.ts";
+import { SITES } from "../worker/src/sources/sites.ts";
+import { adapters } from "../worker/src/sources/registry.ts";
 
 afterEach(() => vi.unstubAllGlobals());
 
-function jsonResponse(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), { status });
-}
+const BASE = "https://example.com/?s=q";
 
-describe("github adapter", () => {
-  it("maps repos to results", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () =>
-        jsonResponse({
-          items: [
-            {
-              id: 1,
-              full_name: "a/b",
-              html_url: "https://github.com/a/b",
-              description: "desc",
-              updated_at: "2024-01-01T00:00:00Z",
-            },
-          ],
-        }),
-      ),
+describe("html extraction", () => {
+  it("decodes named and numeric entities", () => {
+    expect(decodeEntities("A &amp; B &#8211; C &#x27;D&#39;")).toBe(
+      "A & B – C 'D'",
     );
-    const out = await githubAdapter.search("x", new AbortController().signal);
-    expect(out[0]).toMatchObject({ title: "a/b", source: "github" });
+    expect(decodeEntities("bad &unknown; &#999999999999;")).toBe(
+      "bad &unknown; &#999999999999;",
+    );
   });
 
-  it("throws friendly error on rate limit", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => new Response("", { status: 403 })));
+  it("strips tags and collapses whitespace", () => {
+    expect(stripTags("<b>Hello</b>  <span>world</span>\n  !")).toBe(
+      "Hello world !",
+    );
+  });
+
+  it("extracts anchors inside a theme container, resolving relative hrefs", () => {
+    const html = `<nav><a href="https://example.com/category/x/">Cat</a></nav>
+      <h2 class="entry-title"><a href="https://example.com/foo-1-0/">Foo 1.0</a></h2>
+      <h2 class="entry-title"><a href="/bar-2-0/">Bar 2.0 &amp; Co</a></h2>`;
+    const out = extractLinks(html, {
+      baseUrl: BASE,
+      hosts: ["example.com"],
+      containerClass: "entry-title",
+    });
+    expect(out.map((o) => o.title)).toEqual(["Foo 1.0", "Bar 2.0 & Co"]);
+    expect(out[1].url).toBe("https://example.com/bar-2-0/");
+  });
+
+  it("rel=bookmark keeps post links, global deny drops system pages", () => {
+    const html = `<a href="https://example.com/tool-1/" rel="bookmark">Tool 1</a>
+      <a href="https://example.com/privacy-policy/" rel="bookmark">Privacy</a>
+      <a href="https://example.com/tool-2/">Tool 2</a>`;
+    const out = extractLinks(html, {
+      baseUrl: BASE,
+      hosts: ["example.com"],
+      requireRelBookmark: true,
+    });
+    expect(out.map((o) => o.title)).toEqual(["Tool 1"]);
+  });
+
+  it("title-attr mode keeps post links and drops category nav", () => {
+    const html = `<a href="https://example.com/lumenzia/" title="Lumenzia v12">Lumenzia v12</a>
+      <a href="https://example.com/photoshop/">Photoshop</a>`;
+    const out = extractLinks(html, {
+      baseUrl: BASE,
+      hosts: ["example.com"],
+      requireTitleAttr: true,
+    });
+    expect(out).toHaveLength(1);
+    expect(out[0].url).toBe("https://example.com/lumenzia/");
+    expect(out[0].title).toBe("Lumenzia v12");
+  });
+
+  it("falls back to the title attribute when the anchor text is empty", () => {
+    const html = `<a href="https://example.com/x/" title="Only In Attr"><img src="a.png" alt=""></a>`;
+    const out = extractLinks(html, {
+      baseUrl: BASE,
+      hosts: ["example.com"],
+      requireTitleAttr: true,
+    });
+    expect(out[0].title).toBe("Only In Attr");
+  });
+
+  it("inner-exact class mode handles card layouts", () => {
+    const html = `<a href="https://example.com/photoshop-2026/"><div class="bloque"><div class="title">Adobe Photoshop 2026</div></div></a>
+      <a href="https://example.com/entry-title/"><div class="entry-title">decoy</div></a>`;
+    const out = extractLinks(html, {
+      baseUrl: BASE,
+      hosts: ["example.com"],
+      requireInnerClassExact: "title",
+    });
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ title: "Adobe Photoshop 2026" });
+  });
+
+  it("pathAllow restricts to item pages and other hosts are dropped", () => {
+    const html = `<a href="https://g4d.test/item/magic-action.html">Magic Action</a>
+      <a href="https://g4d.test/about/">About Us</a>
+      <a href="https://other.test/item/x.html">Foreign</a>`;
+    const out = extractLinks(html, {
+      baseUrl: BASE,
+      hosts: ["g4d.test"],
+      pathAllow: /^\/item\/[^/]+\.html$/i,
+    });
+    expect(out.map((o) => o.title)).toEqual(["Magic Action"]);
+  });
+
+  it("dedupes by host+path and respects the limit", () => {
+    const items = Array.from(
+      { length: 30 },
+      (_, i) =>
+        `<h2 class="entry-title"><a href="https://example.com/p${i}/">Post ${i}</a></h2>`,
+    ).join("");
+    const out = extractLinks(items, {
+      baseUrl: BASE,
+      hosts: ["example.com"],
+      containerClass: "entry-title",
+      limit: 5,
+    });
+    expect(out).toHaveLength(5);
+    expect(out[4].title).toBe("Post 4");
+  });
+
+  it("drops foreign hosts, non-http schemes and assets", () => {
+    const html = `<a href="https://evil.com/a/">Evil</a>
+      <a href="javascript:void(0)">Js</a>
+      <a href="https://example.com/logo.png">Logo</a>`;
+    expect(
+      extractLinks(html, { baseUrl: BASE, hosts: ["example.com"] }),
+    ).toHaveLength(0);
+  });
+});
+
+describe("site registry", () => {
+  it("has unique ids, https search urls and hosts for every source", () => {
+    const ids = SITES.map((s) => s.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const s of SITES) {
+      expect(s.searchUrl("test q")).toMatch(/^https:\/\//);
+      expect(s.hosts.length).toBeGreaterThan(0);
+      expect(s.extract.baseUrl).toBeUndefined(); // injected at fetch time
+    }
+    expect(adapters).toHaveLength(SITES.length);
+    expect(adapters.map((a) => a.id)).toEqual(ids);
+  });
+});
+
+describe("site adapter", () => {
+  it("fetches the search page and maps extracted links", async () => {
+    const page = `<article><h2 class="title"><a href="https://cracksurl.com/winrar-7-full/" rel="bookmark">WinRAR 7 Full</a></h2></article>`;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(page, { status: 200 })),
+    );
+    const adapter = adapters.find((a) => a.id === "cracksurl")!;
+    const out = await adapter.search("winrar", new AbortController().signal);
+    expect(out[0]).toMatchObject({
+      title: "WinRAR 7 Full",
+      url: "https://cracksurl.com/winrar-7-full/",
+      source: "cracksurl",
+    });
+    const called = vi.mocked(fetch).mock.calls[0][0] as string;
+    expect(called).toContain("?s=winrar");
+  });
+
+  it("throws a friendly error on bot-block responses", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("forbidden", { status: 403 })),
+    );
+    const adapter = adapters.find((a) => a.id === "cracksurl")!;
     await expect(
-      githubAdapter.search("x", new AbortController().signal),
-    ).rejects.toThrow(/rate limit/i);
-  });
-});
-
-describe("npm adapter", () => {
-  it("maps packages to results", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () =>
-        jsonResponse({
-          objects: [
-            {
-              package: {
-                name: "left-pad",
-                description: "pad",
-                date: "2024-01-01",
-                links: { npm: "https://www.npmjs.com/package/left-pad" },
-              },
-            },
-          ],
-        }),
-      ),
-    );
-    const out = await npmAdapter.search("pad", new AbortController().signal);
-    expect(out[0]).toMatchObject({ title: "left-pad", source: "npm" });
-  });
-});
-
-describe("crates adapter", () => {
-  it("falls back to crates.io URL when homepage is missing", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () =>
-        jsonResponse({
-          crates: [{ id: "serde", updated_at: "2024-01-01T00:00:00Z" }],
-        }),
-      ),
-    );
-    const out = await cratesAdapter.search(
-      "serde",
-      new AbortController().signal,
-    );
-    expect(out[0].url).toBe("https://crates.io/crates/serde");
+      adapter.search("winrar", new AbortController().signal),
+    ).rejects.toThrow(/403/);
   });
 });

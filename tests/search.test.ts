@@ -22,16 +22,15 @@ describe("validateQuery", () => {
 
 describe("url validation", () => {
   it("requires https and strips hash/trailing slash", () => {
-    expect(normalizeUrl("http://github.com/a")).toBeNull();
-    expect(normalizeUrl("https://github.com/a/#x")).toBe(
-      "https://github.com/a",
+    expect(normalizeUrl("http://example.com/a")).toBeNull();
+    expect(normalizeUrl("https://example.com/a/#x")).toBe(
+      "https://example.com/a",
     );
   });
 
   it("enforces per-source host allowlist", () => {
-    expect(isAllowedUrl("https://github.com/a/b", "github")).toBe(true);
-    expect(isAllowedUrl("https://evil.com/x", "github")).toBe(false);
-    expect(isAllowedUrl("https://example.com/crate", "crates")).toBe(true);
+    expect(isAllowedUrl("https://cracksurl.com/a/b", "cracksurl")).toBe(true);
+    expect(isAllowedUrl("https://evil.com/x", "cracksurl")).toBe(false);
   });
 
   it("drops disallowed urls during sanitize", () => {
@@ -42,10 +41,10 @@ describe("url validation", () => {
           title: "evil",
           url: "https://evil.com/x",
           snippet: "",
-          source: "github",
+          source: "cracksurl",
         },
       ],
-      "github",
+      "cracksurl",
     );
     expect(out).toHaveLength(0);
   });
@@ -54,8 +53,20 @@ describe("url validation", () => {
 describe("dedupe", () => {
   it("drops duplicate urls case-insensitively", () => {
     const rows = dedupe([
-      { id: "1", title: "a", url: "https://A.com/x", snippet: "", source: "npm" },
-      { id: "2", title: "b", url: "https://a.com/x", snippet: "", source: "npm" },
+      {
+        id: "1",
+        title: "a",
+        url: "https://A.com/x",
+        snippet: "",
+        source: "motka",
+      },
+      {
+        id: "2",
+        title: "b",
+        url: "https://a.com/x",
+        snippet: "",
+        source: "motka",
+      },
     ]);
     expect(rows).toHaveLength(1);
   });
@@ -66,9 +77,9 @@ describe("runSearch orchestration", () => {
     const many = Array.from({ length: 30 }, (_, i) => ({
       id: `r${i}`,
       title: `t${i}`,
-      url: `https://github.com/o/r${i}`,
+      url: `https://cracksurl.com/o/r${i}`,
       snippet: "",
-      source: "github" as const,
+      source: "cracksurl" as const,
     }));
     const stub = adapters.map((a) => ({
       ...a,
@@ -88,7 +99,7 @@ describe("runSearch orchestration", () => {
 
   it("marks a failing source as error but still completes", async () => {
     const stub = adapters.map((a) =>
-      a.id === "npm"
+      a.id === "motka"
         ? { ...a, search: async () => Promise.reject(new Error("boom")) }
         : { ...a, search: async () => [] },
     );
@@ -102,7 +113,7 @@ describe("runSearch orchestration", () => {
       events.some(
         ([e, d]) =>
           e === "status" &&
-          (d as { source: string; state: string }).source === "npm" &&
+          (d as { source: string; state: string }).source === "motka" &&
           (d as { state: string }).state === "error",
       ),
     ).toBe(true);
@@ -116,20 +127,30 @@ describe("runSearch orchestration", () => {
     const fast = {
       id: "fast",
       title: "fast",
-      url: "https://github.com/o/fast",
+      url: "https://cracksurl.com/o/fast",
       snippet: "",
-      source: "github" as const,
+      source: "cracksurl" as const,
     };
     const slow = {
       id: "slow",
       title: "slow",
-      url: "https://www.npmjs.com/package/slow",
+      url: "https://motka.net/slow",
       snippet: "",
-      source: "npm" as const,
+      source: "motka" as const,
     };
     const stub = [
-      { id: "github" as const, label: "g", description: "", search: async () => [fast] },
-      { id: "npm" as const, label: "n", description: "", search: () => gate.then(() => [slow]) },
+      {
+        id: "cracksurl" as const,
+        label: "g",
+        description: "",
+        search: async () => [fast],
+      },
+      {
+        id: "motka" as const,
+        label: "n",
+        description: "",
+        search: () => gate.then(() => [slow]),
+      },
     ];
     const events: [string, unknown][] = [];
     const pending = runSearch("query", (e, d) => events.push([e, d]), stub);
@@ -147,12 +168,12 @@ describe("runSearch orchestration", () => {
     const dup = {
       id: "d",
       title: "dup",
-      url: "https://github.com/o/dup",
+      url: "https://cracksurl.com/o/dup",
       snippet: "",
-      source: "github" as const,
+      source: "cracksurl" as const,
     };
     const mk = (prefix: string, dupFirst: boolean) => ({
-      id: "github" as const,
+      id: "cracksurl" as const,
       label: "g",
       description: "",
       search: async () => [
@@ -160,9 +181,9 @@ describe("runSearch orchestration", () => {
         ...Array.from({ length: 20 }, (_, i) => ({
           id: `${prefix}${i}`,
           title: `${prefix}${i}`,
-          url: `https://github.com/o/${prefix}${i}`,
+          url: `https://cracksurl.com/o/${prefix}${i}`,
           snippet: "",
-          source: "github" as const,
+          source: "cracksurl" as const,
         })),
       ],
     });

@@ -3,17 +3,22 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PiracyFinder MVP — Open Source Metasearch</title>
+    <title>PiracyFinder — r/Piracy Megathread Software Search</title>
     <link rel="stylesheet" href="/src/styles.css" />
   </head>
   <body>
     <main class="wrap">
-      <h1>Open Source Metasearch</h1>
+      <h1>PiracyFinder</h1>
       <p class="sub">
-        Live federated search across GitHub, npm, and crates.io. No downloads, no piracy sources.
+        Federated search across the “Direct downloads” sites of the
+        <a
+          href="https://www.reddit.com/r/Piracy/wiki/megathread/software/"
+          rel="noopener noreferrer"
+          >r/Piracy software megathread</a
+        >. Links only — nothing is hosted or mirrored here.
       </p>
       <form id="search-form" role="search">
-        <label for="q">Search open source projects</label>
+        <label for="q">Search software across megathread sites</label>
         <div class="row">
           <input
             id="q"
@@ -23,7 +28,7 @@
             maxlength="150"
             required
             autocomplete="off"
-            placeholder="e.g. markdown parser"
+            placeholder="e.g. photoshop, winrar, davinci resolve"
           />
           <button type="submit" id="go">Search</button>
           <button type="button" id="cancel" disabled>Cancel</button>
