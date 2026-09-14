@@ -17,7 +17,9 @@ describe("detectOs", () => {
   it("detects windows from explicit mentions", () => {
     expect(detectOs("Windows 11 Manager 2.1")).toBe("windows");
     expect(detectOs("DaVinci Resolve Studio 19 Win x64")).toBe("windows");
+    expect(detectOs("Ableton Live 11.0.2 Suite WIN DAW")).toBe("windows");
     expect(detectOs("Tool 5.0 (x86/x64)")).toBe("windows");
+    expect(detectOs("App Win10 edition")).toBe("windows");
   });
 
   it("does not treat Win-prefixed names as windows evidence", () => {
