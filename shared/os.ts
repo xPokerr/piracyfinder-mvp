@@ -2,12 +2,6 @@
 
 export type OsFilter = "windows" | "mac";
 
-/** Token appended to per-site queries when an OS filter is active. */
-export const OS_TOKEN: Record<OsFilter, string> = {
-  windows: "windows",
-  mac: "mac",
-};
-
 const MAC =
   /\bmac\b|\bmacos\b|\bmac\s+os\b|\bos\s+x\b|apple\s*silicon|\bfor\s+mac\b/i;
 const WIN =

@@ -3,9 +3,11 @@ import {
   dedupe,
   formatSse,
   isAllowedUrl,
+  isRelevantTitle,
   normalizeUrl,
   runSearch,
   sanitizeResults,
+  titleTokens,
   validateQuery,
   type Emit,
 } from "../worker/src/search.ts";
@@ -45,8 +47,57 @@ describe("url validation", () => {
         },
       ],
       "cracksurl",
+      "ableton",
     );
     expect(out).toHaveLength(0);
+  });
+});
+
+describe("relevance gate", () => {
+  it("splits query into alphanumeric tokens of at least 2 chars", () => {
+    expect(titleTokens("Ableton Live 12!")).toEqual(["ableton", "live", "12"]);
+    expect(titleTokens("a b -")).toEqual([]);
+  });
+
+  it("keeps titles containing any query term", () => {
+    expect(isRelevantTitle("Ableton Live 12 Suite", "ableton")).toBe(true);
+    expect(isRelevantTitle("AppCleaner 3.6", "cleaner")).toBe(true);
+    expect(isRelevantTitle("Adobe Photoshop 2026", "photoshop mac")).toBe(true);
+  });
+
+  it("drops titles without any query term", () => {
+    expect(isRelevantTitle("Windows Slideshow Mockup", "ableton")).toBe(false);
+    expect(isRelevantTitle("Laptop Screen Mockup", "winrar windows")).toBe(
+      false,
+    );
+  });
+
+  it("is lenient when the query has no usable tokens", () => {
+    expect(isRelevantTitle("anything", "??")).toBe(true);
+  });
+
+  it("sanitize filters irrelevant titles for the query", () => {
+    const out = sanitizeResults(
+      [
+        {
+          id: "1",
+          title: "Modular Windows Slideshow Presentation",
+          url: "https://cracksurl.com/x/",
+          snippet: "",
+          source: "cracksurl",
+        },
+        {
+          id: "2",
+          title: "Ableton Live 12 Suite",
+          url: "https://cracksurl.com/y/",
+          snippet: "",
+          source: "cracksurl",
+        },
+      ],
+      "cracksurl",
+      "ableton",
+    );
+    expect(out.map((r) => r.title)).toEqual(["Ableton Live 12 Suite"]);
   });
 });
 
@@ -76,7 +127,7 @@ describe("runSearch orchestration", () => {
   it("emits status/result/done in order and caps totals", async () => {
     const many = Array.from({ length: 30 }, (_, i) => ({
       id: `r${i}`,
-      title: `t${i}`,
+      title: `t${i} test`,
       url: `https://cracksurl.com/o/r${i}`,
       snippet: "",
       source: "cracksurl" as const,
@@ -126,14 +177,14 @@ describe("runSearch orchestration", () => {
     });
     const fast = {
       id: "fast",
-      title: "fast",
+      title: "fast query",
       url: "https://cracksurl.com/o/fast",
       snippet: "",
       source: "cracksurl" as const,
     };
     const slow = {
       id: "slow",
-      title: "slow",
+      title: "slow query",
       url: "https://motka.net/slow",
       snippet: "",
       source: "motka" as const,
@@ -167,7 +218,7 @@ describe("runSearch orchestration", () => {
   it("dedupes urls across sources and caps at 60", async () => {
     const dup = {
       id: "d",
-      title: "dup",
+      title: "dup query",
       url: "https://cracksurl.com/o/dup",
       snippet: "",
       source: "cracksurl" as const,
@@ -180,7 +231,7 @@ describe("runSearch orchestration", () => {
         ...(dupFirst ? [dup] : [{ ...dup, id: `${prefix}-dup2` }]),
         ...Array.from({ length: 20 }, (_, i) => ({
           id: `${prefix}${i}`,
-          title: `${prefix}${i}`,
+          title: `${prefix}${i} query`,
           url: `https://cracksurl.com/o/${prefix}${i}`,
           snippet: "",
           source: "cracksurl" as const,

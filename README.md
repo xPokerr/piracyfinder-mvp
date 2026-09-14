@@ -69,9 +69,9 @@ Set the var on deploy: `npx wrangler deploy --cwd worker --var FRONTEND_ORIGIN:h
 ## API
 
 - `GET /api/sources` → `[{ id, label, description }]`
-- `POST /api/search` body `{ "query": "2-150 chars", "os": "windows" | "mac" (optional) }` → `text/event-stream` with `status`, `result`, `done`, `error` events.
+- `POST /api/search` body `{ "query": "2-150 chars" }` → `text/event-stream` with `status`, `result`, `done`, `error` events.
 
-When `os` is set, the worker appends the OS token (`mac`/`windows`) to each site's query so their full-text search ranks matching posts first; the frontend additionally filters streamed results by title (Mac requires explicit "Mac/macOS" evidence, the Windows view only hides Mac-only titles) and shows an OS badge on each card.
+Queries are sent pure (no keyword stuffing): the worker drops any result whose title does not contain at least one query term, which filters out the loosely-related posts that sites with full-text OR search tend to return. The web UI adds a Windows/macOS toggle next to the search field that filters the streamed results client-side by title (Mac keeps only explicit Mac/macOS mentions, Windows hides Mac-only titles — untitled posts on these sites are Windows-first) and badges detected results.
 
 ## Limits
 

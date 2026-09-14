@@ -35,6 +35,25 @@ export function normalizeUrl(raw: string): string | null {
   }
 }
 
+/**
+ * Relevance gate: sites with full-text OR search return loosely related
+ * posts (body matches, sidebar widgets), so keep only results whose title
+ * contains at least one query term. Titles without any term are junk.
+ */
+export function titleTokens(query: string): string[] {
+  return query
+    .toLowerCase()
+    .split(/[^a-z0-9]+/i)
+    .filter((t) => t.length >= 2);
+}
+
+export function isRelevantTitle(title: string, query: string): boolean {
+  const tokens = titleTokens(query);
+  if (tokens.length === 0) return true;
+  const t = title.toLowerCase();
+  return tokens.some((tok) => t.includes(tok));
+}
+
 export function isAllowedUrl(url: string, source: SourceId): boolean {
   const allow = HOST_ALLOWLIST[source];
   if (!allow) return false;
@@ -49,10 +68,12 @@ export function isAllowedUrl(url: string, source: SourceId): boolean {
 export function sanitizeResults(
   items: SearchResult[],
   source: SourceId,
+  query: string,
 ): SearchResult[] {
   const out: SearchResult[] = [];
   for (const r of items) {
     if (!r.title || !r.url) continue;
+    if (!isRelevantTitle(r.title, query)) continue;
     const url = normalizeUrl(r.url);
     if (!url || !isAllowedUrl(url, source)) continue;
     out.push({
@@ -107,7 +128,7 @@ async function runOne(
   } satisfies SourceStatus);
   try {
     const raw = await adapter.search(query, ctrl.signal);
-    const clean = sanitizeResults(raw, adapter.id);
+    const clean = sanitizeResults(raw, adapter.id, query);
     emit("status", {
       source: adapter.id,
       state: "done",

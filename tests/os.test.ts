@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { OS_TOKEN, detectOs } from "../shared/os.ts";
+import { detectOs } from "../shared/os.ts";
 
 describe("detectOs", () => {
   it("detects mac from explicit mentions", () => {
@@ -28,12 +28,5 @@ describe("detectOs", () => {
   it("returns null when the title has no OS evidence", () => {
     expect(detectOs("FliFlik UltConv 7.4.2")).toBeNull();
     expect(detectOs("")).toBeNull();
-  });
-});
-
-describe("OS_TOKEN", () => {
-  it("maps filters to query tokens", () => {
-    expect(OS_TOKEN.mac).toBe("mac");
-    expect(OS_TOKEN.windows).toBe("windows");
   });
 });

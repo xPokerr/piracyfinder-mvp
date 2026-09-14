@@ -101,8 +101,6 @@ function setOsFilter(os: OsFilter | null) {
     osButtons[key].setAttribute("aria-pressed", String(os === key));
   }
   renderResults();
-  // Re-run the current query so per-site searches also target the chosen OS.
-  if (input.value.trim().length >= 2) form.requestSubmit();
 }
 
 for (const key of Object.keys(osButtons) as OsFilter[]) {
@@ -164,7 +162,6 @@ form.addEventListener("submit", (e) => {
 
   streamSearch(query, {
     signal: current.signal,
-    os: osFilter,
     onEvent: (event, data) => {
       if (seq !== querySeq) return; // stale stream
       if (event === "status") {
