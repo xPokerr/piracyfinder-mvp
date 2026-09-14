@@ -1,0 +1,6 @@
+name = "piracyfinder-mvp"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+[vars]
+FRONTEND_ORIGIN = "https://example.github.io"

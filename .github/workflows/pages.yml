@@ -1,0 +1,40 @@
+name: Pages deploy
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Check VITE_API_BASE
+        run: |
+          if [ -z "${{ vars.VITE_API_BASE }}" ]; then
+            echo "::error::Repository variable VITE_API_BASE is not set (Settings > Variables > Actions > VITE_API_BASE, e.g. https://<worker>.workers.dev)."
+            exit 1
+          fi
+      - run: npm test -- --run
+      - run: npm run typecheck
+      - run: npm run build
+        env:
+          VITE_API_BASE: ${{ vars.VITE_API_BASE }}
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - id: deploy
+        uses: actions/deploy-pages@v4
