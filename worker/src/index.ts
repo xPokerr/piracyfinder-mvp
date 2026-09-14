@@ -1,9 +1,16 @@
 import type { SourceInfo } from "../../shared/types.ts";
+import { OS_TOKEN, type OsFilter } from "../../shared/os.ts";
 import { formatSse, runSearch, validateQuery } from "./search.ts";
 import { adapters } from "./sources/registry.ts";
 
 interface Env {
   FRONTEND_ORIGIN?: string;
+}
+
+function parseOs(value: unknown): OsFilter | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (value === "windows" || value === "mac") return value;
+  throw new Error("Invalid os");
 }
 
 function allowedOrigin(req: Request, env: Env): string | null {
@@ -41,14 +48,19 @@ export default {
 
     if (req.method === "POST" && url.pathname === "/api/search") {
       let query: string;
+      let os: OsFilter | undefined;
       try {
-        query = validateQuery(await req.json());
-      } catch {
+        const body: unknown = await req.json();
+        query = validateQuery(body);
+        os = parseOs((body as { os?: unknown }).os);
+      } catch (err) {
         return Response.json(
-          { error: "Query must be 2-150 characters" },
+          { error: err instanceof Error ? err.message : "Bad request" },
           { status: 400, headers: corsHeaders(req, env) },
         );
       }
+      // OS focus: hint each site's full-text search via a query token.
+      const effective = os ? `${query} ${OS_TOKEN[os]}` : query;
       // Never log the query string.
       const stream = new ReadableStream({
         async start(controller) {
@@ -57,7 +69,7 @@ export default {
               new TextEncoder().encode(formatSse(event as never, data)),
             );
           try {
-            await runSearch(query, send);
+            await runSearch(effective, send);
           } catch {
             send("error", { message: "Search failed" });
           } finally {

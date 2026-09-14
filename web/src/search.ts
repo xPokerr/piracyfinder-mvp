@@ -1,21 +1,25 @@
 // Minimal SSE client over fetch + ReadableStream. Caller owns AbortController
 // so a new query or Cancel cleanly isolates streams.
 
+import type { OsFilter } from "../../shared/os.ts";
+
 export interface SseHandlers {
   onEvent: (event: string, data: unknown) => void;
   signal: AbortSignal;
+  /** Optional OS focus, sent through to the worker. */
+  os?: OsFilter | null;
 }
 
 const API_BASE = (import.meta.env.VITE_API_BASE ?? "").replace(/\/+$/, "");
 
 export async function streamSearch(
   query: string,
-  { onEvent, signal }: SseHandlers,
+  { onEvent, signal, os }: SseHandlers,
 ): Promise<void> {
   const res = await fetch(`${API_BASE}/api/search`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query }),
+    body: JSON.stringify(os ? { query, os } : { query }),
     signal,
   });
   if (!res.ok || !res.body) throw new Error(`Search failed (${res.status})`);

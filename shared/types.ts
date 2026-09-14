@@ -1,5 +1,7 @@
 // Shared contract between worker and web. Keep in sync on both sides.
 
+import type { OsFilter } from "./os.ts";
+
 // One id per megathread "Direct downloads" site wired into the registry.
 export type SourceId =
   | "cracksurl"
@@ -50,6 +52,8 @@ export type SseEventName = "status" | "result" | "done" | "error";
 
 export interface SearchRequest {
   query: string;
+  /** Optional OS focus; the worker appends a hint token to per-site queries. */
+  os?: OsFilter;
 }
 
 export interface DonePayload {

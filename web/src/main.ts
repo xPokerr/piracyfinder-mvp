@@ -1,4 +1,5 @@
 import { fetchSources, streamSearch } from "./search.ts";
+import { detectOs, type OsFilter } from "../../shared/os.ts";
 
 interface Result {
   id: string;
@@ -24,9 +25,21 @@ const live = document.querySelector("#live")!;
 const progress = document.querySelector("#progress")!;
 const resultsEl = document.querySelector("#results")!;
 const filters = document.querySelector<HTMLFieldSetElement>("#filters")!;
+const osButtons = {
+  windows: document.querySelector<HTMLButtonElement>("#os-windows")!,
+  mac: document.querySelector<HTMLButtonElement>("#os-mac")!,
+} as const;
+
+// simple-icons paths (CC0), rendered with currentColor.
+const OS_SVG: Record<OsFilter, string> = {
+  windows:
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M0 3.449 9.75 2.1v9.451H0zm10.949-1.5L24 0v11.4H10.949zM0 12.6h9.75v9.451L0 20.699zM10.949 12.6H24V24l-12.9-1.801z"/></svg>',
+  mac: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.702"/></svg>',
+};
 
 let current: AbortController | null = null;
 let querySeq = 0;
+let osFilter: OsFilter | null = null;
 const seen = new Map<string, Result>();
 const activeFilters = new Set<string>();
 const labelById = new Map<string, string>();
@@ -41,10 +54,19 @@ function renderProgress(statuses: Map<string, Status>) {
   }
 }
 
+// Mac filter keeps only titles with explicit Mac evidence; Windows filter
+// hides Mac-only results (untitled posts are Windows-first on these sites).
+function osVisible(title: string): boolean {
+  if (!osFilter) return true;
+  const detected = detectOs(title);
+  return osFilter === "mac" ? detected === "mac" : detected !== "mac";
+}
+
 function renderResults() {
   resultsEl.innerHTML = "";
   for (const r of seen.values()) {
     if (!activeFilters.has(r.source)) continue;
+    if (!osVisible(r.title)) continue;
     const url = new URL(r.url, location.href);
     if (url.protocol !== "https:") continue;
     const card = document.createElement("article");
@@ -58,11 +80,35 @@ function renderResults() {
     badge.className = "badge";
     badge.textContent = labelById.get(r.source) ?? r.source;
     h.append(a, badge);
+    const detected = detectOs(r.title);
+    if (detected) {
+      const osBadge = document.createElement("span");
+      osBadge.className = "badge os";
+      osBadge.title = detected === "mac" ? "macOS" : "Windows";
+      osBadge.innerHTML = OS_SVG[detected];
+      h.append(osBadge);
+    }
     const p = document.createElement("p");
     p.textContent = r.snippet;
     card.append(h, p);
     resultsEl.appendChild(card);
   }
+}
+
+function setOsFilter(os: OsFilter | null) {
+  osFilter = os;
+  for (const key of Object.keys(osButtons) as OsFilter[]) {
+    osButtons[key].setAttribute("aria-pressed", String(os === key));
+  }
+  renderResults();
+  // Re-run the current query so per-site searches also target the chosen OS.
+  if (input.value.trim().length >= 2) form.requestSubmit();
+}
+
+for (const key of Object.keys(osButtons) as OsFilter[]) {
+  osButtons[key].addEventListener("click", () =>
+    setOsFilter(osFilter === key ? null : key),
+  );
 }
 
 async function loadFilters() {
@@ -118,6 +164,7 @@ form.addEventListener("submit", (e) => {
 
   streamSearch(query, {
     signal: current.signal,
+    os: osFilter,
     onEvent: (event, data) => {
       if (seq !== querySeq) return; // stale stream
       if (event === "status") {
