@@ -165,11 +165,13 @@ a {
 #search-form {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
 }
 
 .pill {
-  flex: 1;
+  flex: 1 1 auto;
+  max-width: 640px;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -297,8 +299,7 @@ a {
 }
 
 #cancel:disabled {
-  opacity: 0;
-  pointer-events: none;
+  display: none;
 }
 
 .suggest {
@@ -330,6 +331,7 @@ a {
 .sources {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 7px;
   margin: 26px 0 6px;
 }
@@ -401,6 +403,7 @@ a {
   margin: 8px 0 12px;
   color: var(--muted);
   font-size: 0.85rem;
+  text-align: center;
 }
 
 .results {
@@ -606,16 +609,13 @@ a {
     flex: 1;
   }
 
-  #cancel:disabled {
-    display: none;
-  }
-
   #cancel:not(:disabled) {
     flex: 1;
   }
 
   .sources {
     flex-wrap: nowrap;
+    justify-content: flex-start;
     overflow-x: auto;
     padding-bottom: 6px;
     scrollbar-width: none;
