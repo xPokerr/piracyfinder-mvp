@@ -4,71 +4,157 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PiracyFinder — r/Piracy Megathread Software Search</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Cdefs%3E%3ClinearGradient%20id='g'%20x1='0'%20y1='0'%20x2='1'%20y2='1'%3E%3Cstop%20offset='0'%20stop-color='%237c5cff'/%3E%3Cstop%20offset='1'%20stop-color='%234cc9f0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width='32'%20height='32'%20rx='7'%20fill='%23121722'/%3E%3Cpath%20d='M17.5%204%208%2018h6l-1.5%2010L22%2014h-6z'%20fill='url(%23g)'/%3E%3C/svg%3E"
+    />
     <link rel="stylesheet" href="/src/styles.css" />
   </head>
   <body>
+    <div class="bg-glow" aria-hidden="true"></div>
+
+    <header class="top">
+      <a class="brand" href="./">
+        <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+          <defs>
+            <linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#7c5cff" />
+              <stop offset="1" stop-color="#4cc9f0" />
+            </linearGradient>
+          </defs>
+          <path d="M17.5 2 6 18.5h7L11 30l15-18h-8z" fill="url(#lg)" />
+        </svg>
+        <span>PiracyFinder</span>
+      </a>
+      <a
+        class="ext-link"
+        href="https://www.reddit.com/r/Piracy/wiki/megathread/software/"
+        target="_blank"
+        rel="noopener noreferrer"
+        >Megathread ↗</a
+      >
+    </header>
+
     <main class="wrap">
-      <h1>PiracyFinder</h1>
-      <p class="sub">
-        Federated search across the “Direct downloads” sites of the
+      <section class="hero">
+        <h1>Search the megathread.</h1>
+        <p class="sub">
+          One query across the “Direct downloads” sites of the
+          <a
+            href="https://www.reddit.com/r/Piracy/wiki/megathread/software/"
+            target="_blank"
+            rel="noopener noreferrer"
+            >r/Piracy software megathread</a
+          >. Links only — nothing is hosted here.
+        </p>
+
+        <form id="search-form" role="search">
+          <label class="sr-only" for="q">Search software across megathread sites</label>
+          <div class="pill">
+            <svg
+              class="pill-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              aria-hidden="true"
+            >
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.5-3.5" />
+            </svg>
+            <input
+              id="q"
+              name="q"
+              type="search"
+              minlength="2"
+              maxlength="150"
+              required
+              autocomplete="off"
+              placeholder="Search software, plugins, templates…"
+            />
+            <div class="os-toggle" role="group" aria-label="Filter by operating system">
+              <button
+                type="button"
+                id="os-windows"
+                aria-pressed="false"
+                title="Windows only"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M0 3.449 9.75 2.1v9.451H0zm10.949-1.5L24 0v11.4H10.949zM0 12.6h9.75v9.451L0 20.699zM10.949 12.6H24V24l-12.9-1.801z"
+                  />
+                </svg>
+              </button>
+              <button
+                type="button"
+                id="os-mac"
+                aria-pressed="false"
+                title="macOS only"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.702"
+                  />
+                </svg>
+              </button>
+            </div>
+            <button type="submit" id="go">Search</button>
+          </div>
+          <button type="button" id="cancel" disabled>Cancel</button>
+        </form>
+
+        <div class="suggest" id="suggest" aria-label="Suggested searches">
+          <button type="button" data-q="ableton">ableton</button>
+          <button type="button" data-q="photoshop">photoshop</button>
+          <button type="button" data-q="winrar">winrar</button>
+          <button type="button" data-q="davinci resolve">davinci resolve</button>
+          <button type="button" data-q="after effects">after effects</button>
+          <button type="button" data-q="office">office</button>
+        </div>
+      </section>
+
+      <section id="sources" class="sources" aria-label="Sources: live status, click to filter"></section>
+
+      <p id="live" role="status" aria-live="polite" class="live"></p>
+
+      <section id="results" class="results" aria-label="Results"></section>
+
+      <section id="empty" class="empty" hidden>
+        <svg
+          class="empty-icon"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          aria-hidden="true"
+        >
+          <circle cx="11" cy="11" r="7" />
+          <path d="m20 20-3.5-3.5" />
+          <path d="M8.5 11h5" />
+        </svg>
+        <h2>No results for “<span id="empty-q"></span>”</h2>
+        <p>Try fewer words, check the spelling, or search a different term.</p>
+        <p id="empty-fail" class="empty-fail" hidden></p>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <p>
+        Link-only metasearch: every query is forwarded to each site’s own
+        search page. Nothing is hosted, mirrored or cached here.
+      </p>
+      <p>
         <a
           href="https://www.reddit.com/r/Piracy/wiki/megathread/software/"
+          target="_blank"
           rel="noopener noreferrer"
-          >r/Piracy software megathread</a
-        >. Links only — nothing is hosted or mirrored here.
+          >r/Piracy megathread</a
+        >
       </p>
-      <form id="search-form" role="search">
-        <label for="q">Search software across megathread sites</label>
-        <div class="row">
-          <input
-            id="q"
-            name="q"
-            type="search"
-            minlength="2"
-            maxlength="150"
-            required
-            autocomplete="off"
-            placeholder="e.g. photoshop, winrar, davinci resolve"
-          />
-          <div class="os-toggle" role="group" aria-label="Filter by operating system">
-            <button
-              type="button"
-              id="os-windows"
-              aria-pressed="false"
-              title="Windows only"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  d="M0 3.449 9.75 2.1v9.451H0zm10.949-1.5L24 0v11.4H10.949zM0 12.6h9.75v9.451L0 20.699zM10.949 12.6H24V24l-12.9-1.801z"
-                />
-              </svg>
-            </button>
-            <button
-              type="button"
-              id="os-mac"
-              aria-pressed="false"
-              title="macOS only"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.702"
-                />
-              </svg>
-            </button>
-          </div>
-          <button type="submit" id="go">Search</button>
-          <button type="button" id="cancel" disabled>Cancel</button>
-        </div>
-      </form>
-      <p id="live" role="status" aria-live="polite" class="live"></p>
-      <section id="progress" aria-label="Per-source progress"></section>
-      <section aria-label="Source filter">
-        <fieldset id="filters">
-          <legend>Filter by source</legend>
-        </fieldset>
-      </section>
-      <section id="results" aria-label="Results"></section>
-    </main>
+    </footer>
+
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
