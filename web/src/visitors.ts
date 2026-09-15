@@ -35,7 +35,9 @@ export function initVisitors(apiBase: string): void {
   let current: VisitStats = { live: 0, total: 0 };
 
   const setNum = (el: HTMLElement, from: number, to: number) => {
-    if (reduced || from === to) {
+    // Background tabs freeze rAF: write the value directly there (and for
+    // reduced motion); the tween only runs in visible tabs.
+    if (reduced || from === to || document.hidden) {
       el.textContent = String(to);
       return;
     }
