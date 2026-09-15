@@ -6,7 +6,7 @@ export interface SseHandlers {
   signal: AbortSignal;
 }
 
-const API_BASE = (import.meta.env.VITE_API_BASE ?? "").replace(/\/+$/, "");
+export const API_BASE = (import.meta.env.VITE_API_BASE ?? "").replace(/\/+$/, "");
 
 export async function streamSearch(
   query: string,

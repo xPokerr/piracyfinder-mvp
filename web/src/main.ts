@@ -1,5 +1,6 @@
-import { fetchSources, streamSearch } from "./search.ts";
+import { fetchSources, streamSearch, API_BASE } from "./search.ts";
 import { detectOs, type OsFilter } from "../../shared/os.ts";
+import { initVisitors } from "./visitors.ts";
 
 interface Result {
   id: string;
@@ -340,3 +341,4 @@ for (const b of document.querySelectorAll<HTMLButtonElement>("#suggest [data-q]"
 }
 
 loadSources();
+initVisitors(API_BASE);

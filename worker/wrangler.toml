@@ -1,6 +1,13 @@
 name = "threadseek-api"
 main = "src/index.ts"
-compatibility_date = "2024-01-01"
+compatibility_date = "2024-12-01"
 
 [vars]
 FRONTEND_ORIGIN = "https://xpokerr.github.io/threadseek"
+
+[durable_objects]
+bindings = [{ name = "COUNTER", class_name = "VisitorCounter" }]
+
+[[migrations]]
+tag = "v1_sqlite_counter"
+new_sqlite_classes = ["VisitorCounter"]

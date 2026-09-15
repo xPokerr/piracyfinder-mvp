@@ -2,9 +2,45 @@ import type { SourceInfo } from "../../shared/types.ts";
 import { formatSse, runSearch, validateQuery } from "./search.ts";
 import { adapters } from "./sources/registry.ts";
 import { ASSET_SITE_IDS } from "./sources/sites.ts";
+import { VisitorCounter } from "./counter.ts";
+
+// Durable Object classes must be exported from the entry module.
+export { VisitorCounter };
+
+interface DurableStub {
+  fetch(request: Request): Promise<Response>;
+}
+
+interface DurableNamespace {
+  idFromName(name: string): object;
+  get(id: object): DurableStub;
+}
 
 interface Env {
   FRONTEND_ORIGIN?: string;
+  COUNTER?: DurableNamespace;
+}
+
+async function counterRoute(
+  req: Request,
+  env: Env,
+  path: string,
+): Promise<Response> {
+  if (!env.COUNTER) {
+    return Response.json(
+      { error: "Counter unavailable" },
+      { status: 503, headers: corsHeaders(req, env) },
+    );
+  }
+  const stub = env.COUNTER.get(env.COUNTER.idFromName("global"));
+  const init =
+    req.method === "POST"
+      ? { method: "POST", body: await req.text(), headers: { "Content-Type": "application/json" } }
+      : { method: "GET" };
+  const res = await stub.fetch(new Request(`https://counter${path}`, init));
+  const headers = corsHeaders(req, env);
+  headers.set("Cache-Control", "no-store");
+  return new Response(await res.text(), { status: res.status, headers });
 }
 
 function allowedOrigin(req: Request, env: Env): string | null {
@@ -50,6 +86,14 @@ export default {
         assetSite: ASSET_SITE_IDS.has(a.id),
       }));
       return Response.json(sources, { headers: corsHeaders(req, env) });
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/visit") {
+      return counterRoute(req, env, "/visit");
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/stats") {
+      return counterRoute(req, env, "/stats");
     }
 
     if (req.method === "POST" && url.pathname === "/api/search") {

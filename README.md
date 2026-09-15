@@ -78,6 +78,8 @@ npx wrangler deploy --cwd worker
 
 - `GET /api/sources` → `[{ id, label, description, assetSite }]`
 - `POST /api/search` body `{ "query": "2-150 chars" }` → `text/event-stream` with `status`, `result`, `done`, `error` events.
+- `POST /api/visit` body `{ "id": "random hex id" }` → `{ live, total }` — heartbeat for the visitor badge (anonymous per-browser id, no cookies).
+- `GET /api/stats` → `{ live, total }` — live visitors (heartbeat within 60s) and total unique visitors. Backed by a Durable Object with SQLite storage.
 
 ## Limits
 
