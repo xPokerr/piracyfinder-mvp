@@ -95,12 +95,20 @@ a {
 }
 
 .v-dot {
+  position: relative;
   width: 7px;
   height: 7px;
   border-radius: 50%;
   background: var(--ok);
-  animation: pulse 1.6s ease-in-out infinite;
   flex: none;
+}
+
+.v-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--ok);
+  opacity: 0;
 }
 
 .v-num {
@@ -109,11 +117,10 @@ a {
   text-align: center;
   color: var(--text);
   font-variant-numeric: tabular-nums;
-  transition: transform 0.2s ease, color 0.2s ease;
+  transition: color 0.2s ease;
 }
 
 .v-num.tick {
-  transform: translateY(-2px) scale(1.25);
   color: var(--accent-2);
 }
 

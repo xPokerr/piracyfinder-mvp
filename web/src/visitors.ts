@@ -31,6 +31,7 @@ export function initVisitors(apiBase: string): void {
   const wrap: HTMLElement = wrapEl;
   const liveEl = wrap.querySelector<HTMLElement>("#v-live")!;
   const totalEl = wrap.querySelector<HTMLElement>("#v-total")!;
+  const ring = wrap.querySelector<HTMLElement>(".v-ring")!;
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
   let current: VisitStats = { live: 0, total: 0 };
 
@@ -52,14 +53,26 @@ export function initVisitors(apiBase: string): void {
     const start = performance.now();
     const step = (t: number) => {
       if (done) return;
-      const p = Math.min(1, (t - start) / 500);
+      const p = Math.min(1, (t - start) / 320);
       el.textContent = String(Math.round(from + (to - from) * (1 - Math.pow(1 - p, 3))));
       if (p < 1) requestAnimationFrame(step);
       else finish();
     };
     requestAnimationFrame(step);
     // Some embeds never render (rAF never fires): land on the final value.
-    setTimeout(finish, 450);
+    setTimeout(finish, 320);
+  };
+
+  // One-shot sonar ring, only when the live count actually changes.
+  const ping = () => {
+    if (reduced) return;
+    ring.animate(
+      [
+        { transform: "scale(1)", opacity: 0.55 },
+        { transform: "scale(2.6)", opacity: 0 },
+      ],
+      { duration: 600, easing: "cubic-bezier(0, 0, 0.2, 1)" },
+    );
   };
 
   async function beat() {
@@ -75,6 +88,7 @@ export function initVisitors(apiBase: string): void {
       current = stats;
       setNum(liveEl, prev.live, stats.live);
       setNum(totalEl, prev.total, stats.total);
+      if (stats.live !== prev.live) ping();
       wrap.hidden = false;
     } catch {
       /* counter unreachable: hide the badge rather than show wrong data */
