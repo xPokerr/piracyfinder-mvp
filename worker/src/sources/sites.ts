@@ -2,7 +2,7 @@ import type { SourceId } from "../../../shared/types.ts";
 import type { ExtractOptions } from "./html.ts";
 
 /**
- * One entry per r/Piracy megathread "Direct downloads" site that exposes a
+ * One entry per community megathread "Direct downloads" site that exposes a
  * server-rendered search page (scrapable without JS or bot challenges).
  *
  * Sites from the megathread intentionally NOT wired up:
