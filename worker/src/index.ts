@@ -11,7 +11,18 @@ function allowedOrigin(req: Request, env: Env): string | null {
   const origin = req.headers.get("Origin") ?? "";
   if (!origin) return null;
   if (/^http:\/\/localhost(:\d+)?$/.test(origin)) return origin;
-  if (env.FRONTEND_ORIGIN && origin === env.FRONTEND_ORIGIN) return origin;
+  if (env.FRONTEND_ORIGIN) {
+    try {
+      // The Origin header carries scheme+host only (no path), so compare
+      // origins: this lets path-hosted frontends (e.g. GitHub Pages
+      // <user>.github.io/<repo>) match FRONTEND_ORIGIN too.
+      if (new URL(origin).origin === new URL(env.FRONTEND_ORIGIN).origin) {
+        return origin;
+      }
+    } catch {
+      /* unparseable origin → not allowed */
+    }
+  }
   return null;
 }
 
