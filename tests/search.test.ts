@@ -3,6 +3,7 @@ import {
   dedupe,
   formatSse,
   isAllowedUrl,
+  isAssetTitle,
   isJunkTitle,
   isRelevantTitle,
   normalizeUrl,
@@ -99,6 +100,56 @@ describe("relevance gate", () => {
       "ableton",
     );
     expect(out.map((r) => r.title)).toEqual(["Ableton Live 12 Suite"]);
+  });
+});
+
+describe("asset filter", () => {
+  it("drops add-on resources when the query is the host program", () => {
+    expect(
+      isAssetTitle("Leather Badge Generator - Photoshop Actions", "photoshop"),
+    ).toBe(true);
+    expect(
+      isAssetTitle("Videohive Photoshop Edutainment Video Template", "photoshop"),
+    ).toBe(true);
+    expect(
+      isAssetTitle("Lumenzia v12.0.2 Plugin For Photoshop", "photoshop"),
+    ).toBe(true);
+    expect(
+      isAssetTitle("Modern Opener | After Effects Template", "after effects"),
+    ).toBe(true);
+    expect(
+      isAssetTitle(
+        "Christmas Titles - DaVinci Resolve by StrokeVorkz",
+        "davinci resolve",
+      ),
+    ).toBe(true);
+    expect(isAssetTitle("Office Color Icons by Jumsoft", "office")).toBe(true);
+    expect(
+      isAssetTitle("Effects Pack for Photoshop Free Download", "photoshop"),
+    ).toBe(true);
+  });
+
+  it("keeps the program itself", () => {
+    expect(isAssetTitle("Adobe Photoshop 27.9.1 + AI Crack", "photoshop")).toBe(
+      false,
+    );
+    expect(isAssetTitle("Adobe Photoshop 2026", "photoshop")).toBe(false);
+    expect(isAssetTitle("Ableton Live 12 Suite 12.4.5", "ableton")).toBe(false);
+  });
+
+  it("keeps products whose name is the query, even if they are plugins", () => {
+    expect(
+      isAssetTitle("Lumenzia v12.0.2 Plugin For Photoshop", "lumenzia"),
+    ).toBe(false);
+  });
+
+  it("keeps everything when the query asks for assets", () => {
+    expect(
+      isAssetTitle("Leather Badge Generator - Photoshop Actions", "photoshop brushes"),
+    ).toBe(false);
+    expect(
+      isAssetTitle("Photoshop Actions pack", "photoshop actions"),
+    ).toBe(false);
   });
 });
 

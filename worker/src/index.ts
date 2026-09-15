@@ -1,6 +1,7 @@
 import type { SourceInfo } from "../../shared/types.ts";
 import { formatSse, runSearch, validateQuery } from "./search.ts";
 import { adapters } from "./sources/registry.ts";
+import { ASSET_SITE_IDS } from "./sources/sites.ts";
 
 interface Env {
   FRONTEND_ORIGIN?: string;
@@ -35,6 +36,7 @@ export default {
         id: a.id,
         label: a.label,
         description: a.description,
+        assetSite: ASSET_SITE_IDS.has(a.id),
       }));
       return Response.json(sources, { headers: corsHeaders(req, env) });
     }

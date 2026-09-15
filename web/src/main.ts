@@ -57,6 +57,7 @@ let searching = false;
 let searchStartedAt = 0;
 const seen = new Map<string, Result>();
 const chips = new Map<string, Chip>();
+const assetSites = new Set<string>();
 
 // OS evidence: category tags from the site (worker-set `os` field) win over
 // title heuristics. Mac filter keeps only explicit Mac evidence; Windows
@@ -92,6 +93,7 @@ async function loadSources() {
   try {
     for (const s of await fetchSources()) {
       chips.set(s.id, { label: s.label, status: null, enabled: true });
+      if (s.assetSite) assetSites.add(s.id);
     }
     renderSources();
   } catch {
@@ -208,9 +210,15 @@ function cardFor(r: Result): HTMLElement {
 }
 
 function visibleResults(): Result[] {
-  return [...seen.values()].filter(
-    (r) => chips.get(r.source)?.enabled !== false && osVisible(r),
-  );
+  // Software sites first; asset libraries keep their picks but rank after.
+  return [...seen.values()]
+    .filter(
+      (r) => chips.get(r.source)?.enabled !== false && osVisible(r),
+    )
+    .sort(
+      (a, b) =>
+        Number(assetSites.has(a.source)) - Number(assetSites.has(b.source)),
+    );
 }
 
 function renderResults() {

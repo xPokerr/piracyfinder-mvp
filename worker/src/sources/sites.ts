@@ -27,6 +27,12 @@ export interface SiteConfig {
    * whose title carries no OS evidence and read the category there.
    */
   postOs?: { categoryPattern: RegExp; max: number };
+  /**
+   * Design/asset libraries: their catalogs are add-ons for other programs,
+   * so when a query is not asset-seeking their results get a small cap
+   * (see ASSET_SITE_CAP in search.ts).
+   */
+  assetSite?: boolean;
 }
 
 const enc = encodeURIComponent;
@@ -49,6 +55,7 @@ export const SITES: SiteConfig[] = [
     description: "After Effects, Premiere and Videohive templates",
     hosts: ["aedownload.com", "www.aedownload.com"],
     searchUrl: wpSearch("aedownload.com"),
+    assetSite: true,
     extract: containerOpts("entry-title"),
   },
   {
@@ -83,6 +90,7 @@ export const SITES: SiteConfig[] = [
     description: "Design resources: mockups, actions, graphics",
     hosts: ["gift4designer.net", "www.gift4designer.net"],
     searchUrl: (q) => `https://gift4designer.net/search?q=${enc(q)}`,
+    assetSite: true,
     extract: { pathAllow: /^\/item\/[^/]+\.html$/i },
   },
   {
@@ -91,6 +99,7 @@ export const SITES: SiteConfig[] = [
     description: "After Effects projects and motion graphics",
     hosts: ["hunterae.com", "www.hunterae.com"],
     searchUrl: wpSearch("hunterae.com"),
+    assetSite: true,
     extract: containerOpts("front-view-title"),
   },
   {
@@ -99,6 +108,7 @@ export const SITES: SiteConfig[] = [
     description: "Intro templates for After Effects and Premiere",
     hosts: ["intro-hd.net", "www.intro-hd.net"],
     searchUrl: wpSearch("intro-hd.net"),
+    assetSite: true,
     extract: titleAttrOpts(),
   },
   {
@@ -107,6 +117,7 @@ export const SITES: SiteConfig[] = [
     description: "Video editing assets: plugins, LUTs, fonts (ex matesfx.com)",
     hosts: ["freevideoeffect.com", "www.freevideoeffect.com"],
     searchUrl: wpSearch("freevideoeffect.com"),
+    assetSite: true,
     extract: containerOpts("jeg_post_title"),
   },
   {
@@ -115,6 +126,7 @@ export const SITES: SiteConfig[] = [
     description: "Design resources: fonts, templates, mockups",
     hosts: ["motka.net", "www.motka.net"],
     searchUrl: wpSearch("motka.net"),
+    assetSite: true,
     extract: {
       containerClass: "entry-title",
       // Category tag precedes the title inside the same card segment.
@@ -151,3 +163,7 @@ export const SITES: SiteConfig[] = [
 export const HOST_ALLOWLIST: Record<SourceId, string[]> = Object.fromEntries(
   SITES.map((s) => [s.id, s.hosts]),
 ) as Record<SourceId, string[]>;
+
+export const ASSET_SITE_IDS: ReadonlySet<string> = new Set(
+  SITES.filter((s) => s.assetSite).map((s) => s.id),
+);

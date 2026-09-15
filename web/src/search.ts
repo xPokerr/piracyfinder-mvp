@@ -48,5 +48,6 @@ export async function fetchSources(signal?: AbortSignal) {
     id: string;
     label: string;
     description: string;
+    assetSite?: boolean;
   }[];
 }

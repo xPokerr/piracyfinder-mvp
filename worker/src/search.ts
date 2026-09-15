@@ -6,13 +6,14 @@ import type {
   SseEventName,
 } from "../../shared/types.ts";
 import { adapters, type SourceAdapter } from "./sources/registry.ts";
-import { HOST_ALLOWLIST } from "./sources/sites.ts";
+import { ASSET_SITE_IDS, HOST_ALLOWLIST } from "./sources/sites.ts";
 
 export {
   PER_SOURCE_TIMEOUT_MS,
   TOTAL_BUDGET_MS,
   MAX_PER_SOURCE,
   MAX_TOTAL,
+  ASSET_SITE_CAP,
 } from "./limits.ts";
 
 import {
@@ -20,6 +21,7 @@ import {
   TOTAL_BUDGET_MS,
   MAX_PER_SOURCE,
   MAX_TOTAL,
+  ASSET_SITE_CAP,
 } from "./limits.ts";
 
 export function normalizeUrl(raw: string): string | null {
@@ -56,7 +58,7 @@ export function isRelevantTitle(title: string, query: string): boolean {
 
 // Courses and guides are not the downloadable software this engine is for.
 const JUNK_RE =
-  /\b(tutorials?|courses?|trainings?|lessons?|e-?books?|guides?|handbooks?|masterclasses?|webinars?)\b|\bhow[- ]to\b/gi;
+  /\b(tutorials?|courses?|trainings?|lessons?|e-?books?|guides?|handbooks?|masterclasses?|webinars?|workshops?)\b|\bhow[- ]to\b/gi;
 
 /**
  * Drop course/tutorial-like posts unless the query explicitly asks for one
@@ -67,6 +69,58 @@ export function isJunkTitle(title: string, query: string): boolean {
   for (const m of title.matchAll(JUNK_RE)) {
     const word = (m[1] ?? "how to").toLowerCase();
     if (!q.includes(word)) return true;
+  }
+  return false;
+}
+
+// Add-on resources built FOR a program are not the program itself.
+const ASSET_SRC =
+  "actions?|templates?|brushes?|presets?|mockups?|fonts?|typefaces?|overlays?|luts?|textures?|plugins?|extensions?|add-?ons?|scripts?|panels?|styles|icons?|vectors?|illustrations?|openers?|slideshows?|transitions?|titles";
+const ASSET_RE = new RegExp(`\\b(?:${ASSET_SRC})\\b`, "i");
+
+/**
+ * Drop asset/add-on posts when the query is really about the host program:
+ * "Photoshop Actions", "Photoshop Template" or "... Plugin for Photoshop"
+ * are noise for a "photoshop" search. Titles stay when the query itself
+ * names the asset ("photoshop brushes") or the product (query "lumenzia"
+ * against "Lumenzia plugin for photoshop" keeps it, the token is the
+ * subject there, not a qualifier).
+ */
+export function isAssetTitle(title: string, query: string): boolean {
+  if (ASSET_RE.test(query)) return false;
+  const tokens = titleTokens(query).filter((t) => t.length >= 3);
+  if (tokens.length === 0) return false;
+  const t = title.toLowerCase();
+  for (const tok of tokens) {
+    // "<token> ... <asset>" — the token qualifies the asset ("photoshop actions").
+    if (
+      new RegExp(`\\b${tok}\\b[^.,;|()]{0,30}?\\b(?:${ASSET_SRC})\\b`, "i").test(
+        t,
+      )
+    ) {
+      return true;
+    }
+    // "<asset> ... <token>" — asset word before the product name
+    // ("Christmas Titles - DaVinci Resolve").
+    if (
+      new RegExp(`\\b(?:${ASSET_SRC})\\b[^.,;|()]{0,30}?\\b${tok}\\b`, "i").test(
+        t,
+      )
+    ) {
+      return true;
+    }
+    // "<asset> for <token>" — "plugin for photoshop".
+    if (
+      new RegExp(`\\b(?:${ASSET_SRC})\\b\\s+for\\s+\\b${tok}\\b`, "i").test(t)
+    ) {
+      return true;
+    }
+    // "<anything> for <token>" — when the query names the host ("Y for
+    // Photoshop", optionally with a brand word in between), it is an add-on.
+    // "X for Mac" style titles are unaffected: the token is the product there.
+    if (new RegExp(`\\bfor\\s+(?:[a-z0-9]+\\s+)?${tok}\\b`, "i").test(t)) {
+      return true;
+    }
   }
   return false;
 }
@@ -87,11 +141,18 @@ export function sanitizeResults(
   source: SourceId,
   query: string,
 ): SearchResult[] {
+  // Design/asset libraries flood program searches; when the query is not
+  // asset-seeking, keep only a few picks from them so software sites dominate.
+  const cap =
+    ASSET_SITE_IDS.has(source) && !ASSET_RE.test(query)
+      ? ASSET_SITE_CAP
+      : MAX_PER_SOURCE;
   const out: SearchResult[] = [];
   for (const r of items) {
     if (!r.title || !r.url) continue;
     if (!isRelevantTitle(r.title, query)) continue;
     if (isJunkTitle(r.title, query)) continue;
+    if (isAssetTitle(r.title, query)) continue;
     const url = normalizeUrl(r.url);
     if (!url || !isAllowedUrl(url, source)) continue;
     out.push({
@@ -101,7 +162,7 @@ export function sanitizeResults(
       url,
     });
   }
-  return out.slice(0, MAX_PER_SOURCE);
+  return out.slice(0, cap);
 }
 
 export function dedupe(results: SearchResult[]): SearchResult[] {

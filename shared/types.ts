@@ -48,6 +48,8 @@ export interface SourceInfo {
   id: SourceId;
   label: string;
   description: string;
+  /** Design/asset library: results are demoted below software sites. */
+  assetSite?: boolean;
 }
 
 export type SseEventName = "status" | "result" | "done" | "error";
