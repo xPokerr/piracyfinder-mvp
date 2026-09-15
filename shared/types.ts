@@ -1,5 +1,7 @@
 // Shared contract between worker and web. Keep in sync on both sides.
 
+import type { OsFilter } from "./os.ts";
+
 // One id per megathread "Direct downloads" site wired into the registry.
 export type SourceId =
   | "cracksurl"
@@ -23,6 +25,8 @@ export interface SearchResult {
   source: SourceId;
   score?: number;
   updatedAt?: string;
+  /** OS evidence from the site's own category tags, when extractable. */
+  os?: OsFilter;
 }
 
 export type SourceState =

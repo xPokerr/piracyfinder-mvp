@@ -62,6 +62,8 @@ function hrefOf(attrs: string): string | null {
 export interface ExtractedLink {
   title: string;
   url: string;
+  /** Category tag text found near the result, e.g. "Windows" / "mac". */
+  category?: string;
 }
 
 export interface ExtractOptions {
@@ -81,6 +83,17 @@ export interface ExtractOptions {
   pathAllow?: RegExp;
   /** Extra per-site deny pattern applied on top of PATH_DENY. */
   pathDenyExtra?: RegExp;
+  /**
+   * Extracted from each result's card segment, so it sees category tags
+   * before or after the title link. First capture group is used as the
+   * category text.
+   */
+  categoryPattern?: RegExp;
+  /**
+   * Category tag precedes the title link (e.g. motka) instead of following
+   * it (e.g. Download Pirate). Determines which card segment is searched.
+   */
+  categoryBefore?: boolean;
   limit?: number;
 }
 
@@ -120,7 +133,7 @@ export function extractLinks(html: string, opts: ExtractOptions): ExtractedLink[
   const out: ExtractedLink[] = [];
   const seen = new Set<string>();
 
-  const push = (attrs: string, inner: string) => {
+  const push = (attrs: string, inner: string, region?: string) => {
     const rawHref = hrefOf(attrs);
     if (rawHref === null) return;
     let url: URL;
@@ -139,10 +152,15 @@ export function extractLinks(html: string, opts: ExtractOptions): ExtractedLink[
       "";
     const title = stripTags(inner) || stripTags(titleAttr);
     if (title.length < 4) return;
+    let category: string | undefined;
+    if (region && opts.categoryPattern) {
+      const cm = opts.categoryPattern.exec(region);
+      if (cm) category = stripTags(cm[1] ?? cm[0]) || undefined;
+    }
     const key = `${url.hostname}${url.pathname}`.toLowerCase();
     if (seen.has(key)) return;
     seen.add(key);
-    out.push({ title: title.slice(0, 200), url: url.toString() });
+    out.push({ title: title.slice(0, 200), url: url.toString(), category });
   };
 
   if (opts.containerClass) {
@@ -152,12 +170,31 @@ export function extractLinks(html: string, opts: ExtractOptions): ExtractedLink[
       "gi",
     );
     const anchor = new RegExp(ANCHOR_SOURCE, "i");
-    for (const m of html.matchAll(container)) {
-      const from = (m.index ?? 0) + m[0].length;
-      const a = anchor.exec(html.slice(from, from + 4000));
+    const cms = [...html.matchAll(container)];
+    for (let i = 0; i < cms.length && out.length < limit; i++) {
+      const start = cms[i].index ?? 0;
+      let region: string | undefined;
+      if (opts.categoryPattern) {
+        if (opts.categoryBefore) {
+          // Card region ends where this title starts; begins after the
+          // previous title (or a lookback for the first card).
+          const from =
+            i > 0
+              ? (cms[i - 1].index ?? 0) + cms[i - 1][0].length
+              : Math.max(0, start - 1200);
+          region = html.slice(from, start);
+        } else {
+          // Card region from this title to the next one.
+          const to =
+            i + 1 < cms.length
+              ? cms[i + 1].index ?? html.length
+              : Math.min(html.length, start + 4000);
+          region = html.slice(start, to);
+        }
+      }
+      const a = anchor.exec(html.slice(start, start + 4000));
       if (!a) continue;
-      push(a[1], a[2]);
-      if (out.length >= limit) break;
+      push(a[1], a[2], region);
     }
   } else {
     for (const a of html.matchAll(new RegExp(ANCHOR_SOURCE, "gi"))) {

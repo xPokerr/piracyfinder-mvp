@@ -71,7 +71,7 @@ Set the var on deploy: `npx wrangler deploy --cwd worker --var FRONTEND_ORIGIN:h
 - `GET /api/sources` → `[{ id, label, description }]`
 - `POST /api/search` body `{ "query": "2-150 chars" }` → `text/event-stream` with `status`, `result`, `done`, `error` events.
 
-Queries are sent pure (no keyword stuffing): the worker drops any result whose title does not contain at least one query term, which filters out the loosely-related posts that sites with full-text OR search tend to return. The web UI adds a Windows/macOS toggle next to the search field that filters the streamed results client-side by title (Mac keeps only explicit Mac/macOS mentions, Windows hides Mac-only titles — untitled posts on these sites are Windows-first) and badges detected results.
+Queries are sent pure (no keyword stuffing). The worker applies two relevance gates: a result is dropped when its title contains no query term (kills full-text OR noise) and when it looks like a course/tutorial ("tutorial", "course", "guide", "how to"…) unless the query explicitly asks for one. The web UI adds a Windows/macOS toggle next to the search field that filters the streamed results client-side and badges detected results. OS evidence comes from the site's own category tags when available (parsed from the search page for Motka and Download Pirate, resolved from the post page for AppDoze) and falls back to title heuristics (Mac requires explicit "Mac/macOS" evidence; the Windows view only hides Mac-only titles).
 
 ## Limits
 

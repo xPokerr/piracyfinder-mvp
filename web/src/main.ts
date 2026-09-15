@@ -7,6 +7,8 @@ interface Result {
   url: string;
   snippet: string;
   source: string;
+  /** OS evidence from the site's category tags, when the worker found it. */
+  os?: "windows" | "mac";
 }
 
 interface Status {
@@ -56,11 +58,17 @@ let searchStartedAt = 0;
 const seen = new Map<string, Result>();
 const chips = new Map<string, Chip>();
 
-// Mac filter keeps only titles with explicit Mac evidence; Windows filter
-// hides Mac-only results (untitled posts are Windows-first on these sites).
-function osVisible(title: string): boolean {
+// OS evidence: category tags from the site (worker-set `os` field) win over
+// title heuristics. Mac filter keeps only explicit Mac evidence; Windows
+// filter hides Mac-only results (untitled posts are Windows-first here).
+function resultOs(r: Result): OsFilter | null {
+  if (r.os === "windows" || r.os === "mac") return r.os;
+  return detectOs(r.title);
+}
+
+function osVisible(r: Result): boolean {
   if (!osFilter) return true;
-  const detected = detectOs(title);
+  const detected = resultOs(r);
   return osFilter === "mac" ? detected === "mac" : detected !== "mac";
 }
 
@@ -165,7 +173,7 @@ function cardFor(r: Result): HTMLElement {
   src.className = "src-chip";
   src.textContent = chips.get(r.source)?.label ?? r.source;
   meta.append(src);
-  const detected = detectOs(r.title);
+  const detected = resultOs(r);
   if (detected) {
     const osBadge = document.createElement("span");
     osBadge.className = "os-badge";
@@ -201,7 +209,7 @@ function cardFor(r: Result): HTMLElement {
 
 function visibleResults(): Result[] {
   return [...seen.values()].filter(
-    (r) => chips.get(r.source)?.enabled !== false && osVisible(r.title),
+    (r) => chips.get(r.source)?.enabled !== false && osVisible(r),
   );
 }
 

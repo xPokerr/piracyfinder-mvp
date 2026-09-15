@@ -40,6 +40,34 @@ describe("html extraction", () => {
     expect(out[1].url).toBe("https://example.com/bar-2-0/");
   });
 
+  it("extracts category tags from the card segment (before the title)", () => {
+    const html = `<h2 class="entry-title"><a href="https://example.com/win-app/">Win App</a></h2>
+      <ul class="entry-meta"><li class="meta-categories"><a href="https://example.com/category/windows/">Windows</a></li></ul>
+      <h2 class="entry-title"><a href="https://example.com/mac-app/">Mac App</a></h2>
+      <ul class="entry-meta"><li class="meta-categories"><a href="https://example.com/category/mac/">Mac 🍏</a></li></ul>`;
+    const out = extractLinks(html, {
+      baseUrl: BASE,
+      hosts: ["example.com"],
+      containerClass: "entry-title",
+      categoryPattern: /meta-categories[\s\S]{0,200}?<a[^>]*>([^<]{2,40})</i,
+    });
+    expect(out.map((o) => o.category)).toEqual(["Windows", "Mac 🍏"]);
+  });
+
+  it("extracts category tags that follow the title link", () => {
+    const html = `<h2 class="cs-entry__title"><a href="https://example.com/tool-1/">Tool 1</a></h2>
+      <div class="cs-meta-category"><ul><li><a href="https://example.com/c/windows/">Windows</a></li></ul></div>
+      <h2 class="cs-entry__title"><a href="https://example.com/tool-2/">Tool 2</a></h2>
+      <div class="cs-meta-category"><ul><li><a href="https://example.com/c/graphics/">Graphics</a></li></ul></div>`;
+    const out = extractLinks(html, {
+      baseUrl: BASE,
+      hosts: ["example.com"],
+      containerClass: "cs-entry__title",
+      categoryPattern: /cs-meta-category[\s\S]{0,400}?<a[^>]*>([^<]{2,40})</i,
+    });
+    expect(out.map((o) => o.category)).toEqual(["Windows", "Graphics"]);
+  });
+
   it("rel=bookmark keeps post links, global deny drops system pages", () => {
     const html = `<a href="https://example.com/tool-1/" rel="bookmark">Tool 1</a>
       <a href="https://example.com/privacy-policy/" rel="bookmark">Privacy</a>
@@ -166,5 +194,27 @@ describe("site adapter", () => {
     await expect(
       adapter.search("winrar", new AbortController().signal),
     ).rejects.toThrow(/403/);
+  });
+
+  it("resolves OS from post pages when the title has no evidence", async () => {
+    const searchPage = `<div class="bav"><a href="https://appdoze.net/some-app/"><div class="bap-c"><div class="title">Some App 2026</div></div></a></div>`;
+    const postPage = `<div class="meta-cats"><ul><li><a href="https://appdoze.net/category/mac/">macOS</a></li></ul></div>`;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: unknown) =>
+        String(input).includes("?s=")
+          ? new Response(searchPage, { status: 200 })
+          : new Response(postPage, { status: 200 }),
+      ),
+    );
+    const adapter = adapters.find((a) => a.id === "appdoze")!;
+    const out = await adapter.search("some app", new AbortController().signal);
+    expect(out[0]).toMatchObject({
+      title: "Some App 2026",
+      os: "mac",
+      source: "appdoze",
+    });
+    // 1 search page + 1 post page
+    expect(vi.mocked(fetch).mock.calls).toHaveLength(2);
   });
 });

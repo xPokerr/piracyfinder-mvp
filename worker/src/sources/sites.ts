@@ -21,6 +21,12 @@ export interface SiteConfig {
   searchUrl: (query: string) => string;
   /** "GET" appends nothing else; only GET is used today. */
   extract: ExtractOptions;
+  /**
+   * OS resolution for sites whose category tags live on the post page
+   * instead of the search results: fetch up to `max` post pages for results
+   * whose title carries no OS evidence and read the category there.
+   */
+  postOs?: { categoryPattern: RegExp; max: number };
 }
 
 const enc = encodeURIComponent;
@@ -52,6 +58,11 @@ export const SITES: SiteConfig[] = [
     hosts: ["appdoze.net", "appdoze.com", "www.appdoze.net"],
     searchUrl: wpSearch("appdoze.net"),
     extract: { requireInnerClassExact: "title" },
+    // OS lives in each post's meta-cats block, not on the search page.
+    postOs: {
+      categoryPattern: /class="meta-cats"[\s\S]{0,200}?<a[^>]*>([^<]{2,40})</i,
+      max: 6,
+    },
   },
   {
     id: "downloadpirate",
@@ -59,7 +70,12 @@ export const SITES: SiteConfig[] = [
     description: "General software, plugins and design resources",
     hosts: ["downloadpirate.com", "www.downloadpirate.com"],
     searchUrl: wpSearch("www.downloadpirate.com"),
-    extract: containerOpts("cs-entry__title"),
+    extract: {
+      containerClass: "cs-entry__title",
+      // Category tag follows the title inside the same card segment.
+      categoryPattern:
+        /cs-meta-category[\s\S]{0,400}?<a[^>]*>([^<]{2,40})</i,
+    },
   },
   {
     id: "gift4designer",
@@ -99,7 +115,12 @@ export const SITES: SiteConfig[] = [
     description: "Design resources: fonts, templates, mockups",
     hosts: ["motka.net", "www.motka.net"],
     searchUrl: wpSearch("motka.net"),
-    extract: { requireRelBookmark: true },
+    extract: {
+      containerClass: "entry-title",
+      // Category tag precedes the title inside the same card segment.
+      categoryBefore: true,
+      categoryPattern: /meta-categories[\s\S]{0,200}?<a[^>]*>([^<]{2,40})</i,
+    },
   },
   {
     id: "plc4me",

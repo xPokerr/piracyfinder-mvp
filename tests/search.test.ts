@@ -3,6 +3,7 @@ import {
   dedupe,
   formatSse,
   isAllowedUrl,
+  isJunkTitle,
   isRelevantTitle,
   normalizeUrl,
   runSearch,
@@ -82,6 +83,56 @@ describe("relevance gate", () => {
         {
           id: "1",
           title: "Modular Windows Slideshow Presentation",
+          url: "https://cracksurl.com/x/",
+          snippet: "",
+          source: "cracksurl",
+        },
+        {
+          id: "2",
+          title: "Ableton Live 12 Suite",
+          url: "https://cracksurl.com/y/",
+          snippet: "",
+          source: "cracksurl",
+        },
+      ],
+      "cracksurl",
+      "ableton",
+    );
+    expect(out.map((r) => r.title)).toEqual(["Ableton Live 12 Suite"]);
+  });
+});
+
+describe("junk filter", () => {
+  it("drops course/tutorial-like titles", () => {
+    expect(
+      isJunkTitle(
+        "Punkademic Ableton Live Lite & Intro Complete Guide TUTORIAL",
+        "ableton",
+      ),
+    ).toBe(true);
+    expect(isJunkTitle("After Effects Video Course", "after effects")).toBe(
+      true,
+    );
+    expect(isJunkTitle("How to install Photoshop", "photoshop")).toBe(true);
+  });
+
+  it("keeps them when the query explicitly asks for one", () => {
+    expect(
+      isJunkTitle("Ableton Live Complete Tutorial", "ableton tutorial"),
+    ).toBe(false);
+  });
+
+  it("keeps regular software titles", () => {
+    expect(isJunkTitle("Ableton Live 12 Suite 12.4.5", "ableton")).toBe(false);
+    expect(isJunkTitle("WinRAR 7.30 for Mac", "winrar")).toBe(false);
+  });
+
+  it("sanitize drops junk titles for the query", () => {
+    const out = sanitizeResults(
+      [
+        {
+          id: "1",
+          title: "Ableton Live Intro Complete Guide TUTORIAL",
           url: "https://cracksurl.com/x/",
           snippet: "",
           source: "cracksurl",

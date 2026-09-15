@@ -54,6 +54,23 @@ export function isRelevantTitle(title: string, query: string): boolean {
   return tokens.some((tok) => t.includes(tok));
 }
 
+// Courses and guides are not the downloadable software this engine is for.
+const JUNK_RE =
+  /\b(tutorials?|courses?|trainings?|lessons?|e-?books?|guides?|handbooks?|masterclasses?|webinars?)\b|\bhow[- ]to\b/gi;
+
+/**
+ * Drop course/tutorial-like posts unless the query explicitly asks for one
+ * (every junk word in the title must also appear in the query to keep it).
+ */
+export function isJunkTitle(title: string, query: string): boolean {
+  const q = query.toLowerCase();
+  for (const m of title.matchAll(JUNK_RE)) {
+    const word = (m[1] ?? "how to").toLowerCase();
+    if (!q.includes(word)) return true;
+  }
+  return false;
+}
+
 export function isAllowedUrl(url: string, source: SourceId): boolean {
   const allow = HOST_ALLOWLIST[source];
   if (!allow) return false;
@@ -74,6 +91,7 @@ export function sanitizeResults(
   for (const r of items) {
     if (!r.title || !r.url) continue;
     if (!isRelevantTitle(r.title, query)) continue;
+    if (isJunkTitle(r.title, query)) continue;
     const url = normalizeUrl(r.url);
     if (!url || !isAllowedUrl(url, source)) continue;
     out.push({
