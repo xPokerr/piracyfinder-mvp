@@ -109,10 +109,37 @@ describe("asset filter", () => {
       isAssetTitle("Leather Badge Generator - Photoshop Actions", "photoshop"),
     ).toBe(true);
     expect(
-      isAssetTitle("Videohive Photoshop Edutainment Video Template", "photoshop"),
+      isAssetTitle(
+        "Videohive Photoshop Edutainment Video Template",
+        "photoshop",
+      ),
     ).toBe(true);
     expect(
       isAssetTitle("Lumenzia v12.0.2 Plugin For Photoshop", "photoshop"),
+    ).toBe(true);
+    expect(
+      isAssetTitle(
+        "BorisFX Sapphire 2026 plugin for Adobe, AVX, OFX & Photoshop",
+        "photoshop",
+      ),
+    ).toBe(true);
+    expect(
+      isAssetTitle(
+        "Sparrow's Photoshop Remove Tool AI Crack Download",
+        "photoshop",
+      ),
+    ).toBe(true);
+    expect(
+      isAssetTitle("Gumroad – Gradient Map Pack Photoshop Download", "photoshop"),
+    ).toBe(true);
+    expect(
+      isAssetTitle("Photoshop – Coolorus 2.7.1 Free 2026 Download", "photoshop"),
+    ).toBe(true);
+    expect(
+      isAssetTitle("Design Gaming Thumbnails In Photoshop", "photoshop"),
+    ).toBe(true);
+    expect(
+      isAssetTitle("Mega Bundle for Retouch Pro Adobe Photoshop", "photoshop"),
     ).toBe(true);
     expect(
       isAssetTitle("Modern Opener | After Effects Template", "after effects"),
@@ -134,6 +161,9 @@ describe("asset filter", () => {
       false,
     );
     expect(isAssetTitle("Adobe Photoshop 2026", "photoshop")).toBe(false);
+    expect(isAssetTitle("Adobe Photoshop 2026 for Mac 27.6.0", "photoshop")).toBe(
+      false,
+    );
     expect(isAssetTitle("Ableton Live 12 Suite 12.4.5", "ableton")).toBe(false);
   });
 

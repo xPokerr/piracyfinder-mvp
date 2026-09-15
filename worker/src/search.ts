@@ -75,50 +75,41 @@ export function isJunkTitle(title: string, query: string): boolean {
 
 // Add-on resources built FOR a program are not the program itself.
 const ASSET_SRC =
-  "actions?|templates?|brushes?|presets?|mockups?|fonts?|typefaces?|overlays?|luts?|textures?|plugins?|extensions?|add-?ons?|scripts?|panels?|styles|icons?|vectors?|illustrations?|openers?|slideshows?|transitions?|titles";
+  "actions?|templates?|brushes?|presets?|mockups?|mock-?ups?|fonts?|typefaces?|overlays?|luts?|textures?|plugins?|extensions?|add-?ons?|scripts?|panels?|styles|icons?|vectors?|illustrations?|openers?|slideshows?|transitions?|titles|packs?|bundles?|kits?|tools?|banners?|stationery|presentations?";
 const ASSET_RE = new RegExp(`\\b(?:${ASSET_SRC})\\b`, "i");
+const ASSET_RE_G = new RegExp(`\\b(?:${ASSET_SRC})\\b`, "gi");
 
 /**
- * Drop asset/add-on posts when the query is really about the host program:
- * "Photoshop Actions", "Photoshop Template" or "... Plugin for Photoshop"
- * are noise for a "photoshop" search. Titles stay when the query itself
- * names the asset ("photoshop brushes") or the product (query "lumenzia"
- * against "Lumenzia plugin for photoshop" keeps it, the token is the
- * subject there, not a qualifier).
+ * Drop asset/add-on posts when the query is really about the host program.
+ * A title containing any asset word is dropped unless it starts with the
+ * query itself and the query is a single product name ("lumenzia" keeps
+ * "Lumenzia plugin for photoshop"; "after effects" — two words — still
+ * drops "After Effects Template"). Titles like "Y for <token>",
+ * "Z in <token>" or "<token> - Product" mark the queried program as the
+ * host, so they are dropped too.
  */
 export function isAssetTitle(title: string, query: string): boolean {
   if (ASSET_RE.test(query)) return false;
   const tokens = titleTokens(query).filter((t) => t.length >= 3);
   if (tokens.length === 0) return false;
-  const t = title.toLowerCase();
+  const t = title.toLowerCase().trimStart();
+  const subject = tokens.length === 1 && t.startsWith(tokens[0]);
+  const assetCount = [...t.matchAll(ASSET_RE_G)].length;
+  // A subject-titled post ("Lumenzia v12.0.2 Plugin") is a product of the
+  // queried name only when it carries a version and a single asset word;
+  // "Office Color Icons"-style titles are asset packs regardless.
+  const subjectProduct =
+    subject && assetCount === 1 && /\b(?:v\s*)?\d+(?:\.\d+)+\b|\b20\d{2}\b/.test(t);
+  if (assetCount > 0 && !subjectProduct) return true;
   for (const tok of tokens) {
-    // "<token> ... <asset>" — the token qualifies the asset ("photoshop actions").
-    if (
-      new RegExp(`\\b${tok}\\b[^.,;|()]{0,30}?\\b(?:${ASSET_SRC})\\b`, "i").test(
-        t,
-      )
-    ) {
-      return true;
-    }
-    // "<asset> ... <token>" — asset word before the product name
-    // ("Christmas Titles - DaVinci Resolve").
-    if (
-      new RegExp(`\\b(?:${ASSET_SRC})\\b[^.,;|()]{0,30}?\\b${tok}\\b`, "i").test(
-        t,
-      )
-    ) {
-      return true;
-    }
-    // "<asset> for <token>" — "plugin for photoshop".
-    if (
-      new RegExp(`\\b(?:${ASSET_SRC})\\b\\s+for\\s+\\b${tok}\\b`, "i").test(t)
-    ) {
-      return true;
-    }
-    // "<anything> for <token>" — when the query names the host ("Y for
-    // Photoshop", optionally with a brand word in between), it is an add-on.
-    // "X for Mac" style titles are unaffected: the token is the product there.
+    // "<token> - Product" — host-tagged listing ("Photoshop - Coolorus").
+    if (new RegExp(`^${tok}\\b\\s*[-–—|:]`, "i").test(t)) return true;
+    // "<anything> for <token>" — "plugin for photoshop".
     if (new RegExp(`\\bfor\\s+(?:[a-z0-9]+\\s+)?${tok}\\b`, "i").test(t)) {
+      return true;
+    }
+    // "<anything> in <token>" — "digital painting in photoshop".
+    if (new RegExp(`\\bin\\s+(?:[a-z0-9]+\\s+)?${tok}\\b`, "i").test(t)) {
       return true;
     }
   }
