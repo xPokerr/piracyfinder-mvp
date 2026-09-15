@@ -52,8 +52,8 @@ export function titleTokens(query: string): string[] {
 export function isRelevantTitle(title: string, query: string): boolean {
   const tokens = titleTokens(query);
   if (tokens.length === 0) return true;
-  const t = title.toLowerCase();
-  return tokens.some((tok) => t.includes(tok));
+  const words = title.toLowerCase().split(/[^a-z0-9]+/i);
+  return tokens.some((tok) => words.some((word) => word.endsWith(tok)));
 }
 
 // Courses and guides are not the downloadable software this engine is for.

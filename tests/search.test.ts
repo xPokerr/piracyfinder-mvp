@@ -72,6 +72,15 @@ describe("relevance gate", () => {
     expect(isRelevantTitle("Laptop Screen Mockup", "winrar windows")).toBe(
       false,
     );
+    expect(
+      isRelevantTitle("Videohive Industrial Revolution", "revo uninstaller"),
+    ).toBe(false);
+  });
+
+  it("keeps product names that include a query term", () => {
+    expect(isRelevantTitle("Revo Uninstaller Pro", "revo uninstaller")).toBe(
+      true,
+    );
   });
 
   it("is lenient when the query has no usable tokens", () => {
