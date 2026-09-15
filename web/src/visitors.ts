@@ -42,14 +42,24 @@ export function initVisitors(apiBase: string): void {
       return;
     }
     el.classList.add("tick");
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      el.textContent = String(to);
+      el.classList.remove("tick");
+    };
     const start = performance.now();
     const step = (t: number) => {
+      if (done) return;
       const p = Math.min(1, (t - start) / 500);
       el.textContent = String(Math.round(from + (to - from) * (1 - Math.pow(1 - p, 3))));
       if (p < 1) requestAnimationFrame(step);
-      else el.classList.remove("tick");
+      else finish();
     };
     requestAnimationFrame(step);
+    // Some embeds never render (rAF never fires): land on the final value.
+    setTimeout(finish, 450);
   };
 
   async function beat() {
